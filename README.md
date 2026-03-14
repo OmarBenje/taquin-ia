@@ -1,6 +1,6 @@
-# Taquin — Résolution par BFS et A*
+# Taquin — Résolution par BFS et A* + Mode Joueur vs IA
 
-Projet IA en C implémentant le **jeu du Taquin** (8-puzzle) résolu automatiquement par deux algorithmes de recherche : **BFS** (Breadth-First Search) et **A\*** avec l'heuristique de la distance de Manhattan.
+Projet IA en C implémentant le **jeu du Taquin** (8-puzzle) sous deux formes : résolution automatique par **BFS** et **A\***, et un mode interactif **Joueur vs IA** où le joueur affronte l'algorithme A*.
 
 ---
 
@@ -79,6 +79,7 @@ starting-kit/
 ├── board.h       # Constantes du jeu (WH_BOARD, MAX_BOARD, MAX_MOVES) et prototypes
 ├── board.c       # Logique du Taquin : initGame, printBoard, evaluateBoard, getChildBoard
 ├── taquin.c      # Algorithmes BFS et A*, affichage de la solution, main
+├── taquin_vs.c   # Mode interactif Joueur vs IA
 ├── nqueens.c     # Squelette fourni par le professeur (problème des N-Reines, BFS)
 └── Makefile
 ```
@@ -132,6 +133,13 @@ Utilisée comme **open list** et **closed list** pour les algorithmes de recherc
 | `showSolution(goal)` | Reconstruit et affiche le chemin de l'état initial au but |
 | `main(argc, argv)` | Point d'entrée — choisit l'algorithme selon l'argument passé |
 
+### `taquin_vs.c` — Mode Joueur vs IA
+
+| Fonction | Description |
+|----------|-------------|
+| `astar_count(board)` | Exécute A* en silence et retourne le nombre optimal de coups |
+| `main()` | Boucle de jeu interactive — gère les entrées clavier et compare les scores |
+
 ---
 
 ## Compilation et exécution
@@ -150,9 +158,30 @@ make
 ### Exécution
 
 ```bash
-./taquin astar   # résolution par A* (recommandé, par défaut)
-./taquin bfs     # résolution par BFS
+./taquin astar   # résolution automatique par A* (recommandé, par défaut)
+./taquin bfs     # résolution automatique par BFS
+./taquin_vs      # mode interactif Joueur vs IA
 ```
+
+### Mode Joueur vs IA
+
+Lance `./taquin_vs` pour affronter l'IA. Le programme :
+1. Génère un puzzle aléatoire solvable
+2. Calcule en silence la solution optimale avec A*
+3. Te laisse jouer manuellement coup par coup
+4. Affiche le score final et te dit de combien l'IA te devance (ou non !)
+
+**Commandes en jeu :**
+
+| Touche | Action |
+|--------|--------|
+| `z` | Déplacer la case vide vers le haut |
+| `s` | Déplacer la case vide vers le bas |
+| `q` | Déplacer la case vide vers la gauche |
+| `d` | Déplacer la case vide vers la droite |
+| `a` | Abandonner la partie |
+
+La **distance de Manhattan restante** s'affiche après chaque coup pour t'aider à évaluer ta progression.
 
 ### Exemple de sortie
 

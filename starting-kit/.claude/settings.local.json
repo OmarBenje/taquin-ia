@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/omarbenjelloun/Downloads/PROJET IA/**)",
+      "Bash(gh repo:*)"
+    ]
+  }
+}

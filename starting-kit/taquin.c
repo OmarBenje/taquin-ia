@@ -14,16 +14,18 @@ void showSolution(Item *goal)
 {
   /* collecter le chemin via les pointeurs parent */
   Item *path[10000];
-  int   len = 0;
+  int len = 0;
   Item *cur = goal;
 
-  while (cur) {
+  while (cur)
+  {
     path[len++] = cur;
     cur = cur->parent;
   }
 
   printf("\n=== Solution (%d coups) ===\n", len - 1);
-  for (int i = len - 1; i >= 0; i--) {
+  for (int i = len - 1; i >= 0; i--)
+  {
     printf("Etape %d :", len - 1 - i);
     printBoard(path[i]);
   }
@@ -41,25 +43,32 @@ void bfs(void)
 {
   Item *cur_node, *child;
 
-  while (listCount(&openList) != 0) {
+  while (listCount(&openList) != 0)
+  {
 
-    cur_node = popFirst(&openList);  /* FIFO */
+    cur_node = popFirst(&openList); /* FIFO */
 
-    if (evaluateBoard(cur_node) == 0.0) {
+    if (evaluateBoard(cur_node) == 0.0)
+    {
       showSolution(cur_node);
       return;
     }
 
-    addLast(&closedList, cur_node);  /* marquer comme visité */
+    addLast(&closedList, cur_node); /* marquer comme visité */
 
-    for (int move = 0; move < MAX_MOVES; move++) {
+    for (int move = 0; move < MAX_MOVES; move++)
+    {
       child = getChildBoard(cur_node, move);
-      if (child == NULL) continue;
+      if (child == NULL)
+        continue;
 
       /* ignorer si déjà visité ou déjà dans l'open list */
-      if (onList(&closedList, child->board) || onList(&openList, child->board)) {
+      if (onList(&closedList, child->board) || onList(&openList, child->board))
+      {
         freeItem(child);
-      } else {
+      }
+      else
+      {
         addLast(&openList, child);
       }
     }
@@ -78,24 +87,31 @@ void astar(void)
 {
   Item *cur_node, *child;
 
-  while (listCount(&openList) != 0) {
+  while (listCount(&openList) != 0)
+  {
 
-    cur_node = popBest(&openList);   /* pop le nœud avec le plus petit f */
+    cur_node = popBest(&openList); /* pop le nœud avec le plus petit f */
 
-    if (evaluateBoard(cur_node) == 0.0) {
+    if (evaluateBoard(cur_node) == 0.0)
+    {
       showSolution(cur_node);
       return;
     }
 
     addLast(&closedList, cur_node);
 
-    for (int move = 0; move < MAX_MOVES; move++) {
+    for (int move = 0; move < MAX_MOVES; move++)
+    {
       child = getChildBoard(cur_node, move);
-      if (child == NULL) continue;
+      if (child == NULL)
+        continue;
 
-      if (onList(&closedList, child->board) || onList(&openList, child->board)) {
+      if (onList(&closedList, child->board) || onList(&openList, child->board))
+      {
         freeItem(child);
-      } else {
+      }
+      else
+      {
         addLast(&openList, child);
       }
     }
@@ -110,11 +126,14 @@ void astar(void)
 /* ------------------------------------------------------------------ */
 int main(int argc, char *argv[])
 {
-  int use_astar = 1;  /* A* par défaut */
+  int use_astar = 1; /* A* par défaut */
 
-  if (argc >= 2) {
-    if (strcmp(argv[1], "bfs") == 0)   use_astar = 0;
-    if (strcmp(argv[1], "astar") == 0) use_astar = 1;
+  if (argc >= 2)
+  {
+    if (strcmp(argv[1], "bfs") == 0)
+      use_astar = 0;
+    if (strcmp(argv[1], "astar") == 0)
+      use_astar = 1;
   }
 
   initList(&openList);
@@ -130,8 +149,10 @@ int main(int argc, char *argv[])
   addLast(&openList, initial);
 
   printf("\nRecherche en cours...\n");
-  if (use_astar) astar();
-  else           bfs();
+  if (use_astar)
+    astar();
+  else
+    bfs();
 
   cleanupList(&openList);
   cleanupList(&closedList);

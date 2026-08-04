@@ -12,3 +12,6 @@ bin/
 
 # Sorties de banc temporaires
 results/tmp/
+
+# Artefacts de processus, pas de produit
+docs/superpowers/

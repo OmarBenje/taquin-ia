@@ -140,8 +140,13 @@ locale ne pouvait révéler :
 - **Manhattan incrémental** — le delta d'un coup est en O(1), je recalcule la
   distance entière sur chaque fils. Facteur 2 à 3 laissé sur la table, et c'est
   le débit qui limite IDA\* sur le 15-puzzle, pas la mémoire.
-- **Historique Git** — les PDF sont sortis du suivi mais restent dans les anciens
-  commits. Les purger demande un `push --force` : non fait sans accord explicite.
+- **Historique Git** — fait après la fusion (`c7b0eb2`) : `git filter-repo` a
+  retiré les PDF, les binaires et `docs/superpowers/` des 27 commits, et
+  l'historique réécrit a été poussé en force. Un clone frais passe de 3,5 Mo à
+  796 Ko. **Réserve** : `refs/pull/2/head` conserve l'ancienne pointe de branche
+  côté GitHub, donc les anciens objets restent accessibles à qui a accès au
+  dépôt via `git fetch origin refs/pull/2/head`. Seul le support GitHub peut les
+  faire disparaître ; le dépôt étant privé, le risque est limité.
 - **Provenance** — la répartition entre le squelette de l'école et le code du TP
   est déclarée, non déduite : le premier commit du dépôt contient déjà le projet
   terminé.

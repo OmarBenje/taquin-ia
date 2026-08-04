@@ -107,6 +107,16 @@ test: $(TESTS)
 	 if [ $$fail -ne 0 ]; then echo "TESTS EN ECHEC"; exit 1; \
 	 else echo "tous les tests passent"; fi
 
+bench: all
+	./bench/run_bench.sh
+
+report:
+	@test -s results/astar-heuristics.csv || { \
+	  echo "results/astar-heuristics.csv est absent."; \
+	  echo "Lancez 'make bench' (ou SCALE=20 make bench pour une version courte),"; \
+	  echo "ou recuperez les CSV commites."; exit 1; }
+	python3 bench/report.py
+
 clean:
 	rm -rf $(BIN)
 
@@ -116,5 +126,3 @@ clean:
 -include $(OBJ)/tests/test_puzzle.d $(OBJ)/tests/test_heuristic.d
 -include $(OBJ)/tests/test_pqueue.d $(OBJ)/tests/test_hashset.d
 -include $(OBJ)/tests/test_search.d $(OBJ)/tests/test_enumerate.d
-
-# Ajoute aussi l'aide sur les options d'analyse.

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "search.h"
+#include "enumerate.h"
 
 /*
  * Banc de mesure du solveur.
@@ -23,6 +24,8 @@ typedef struct {
   int                verify;
   int                show;
   int                quiet;
+  int                enumerate;
+  long long          dist_samples;
 } cli_t;
 
 static void usage(const char *prog)
@@ -49,6 +52,10 @@ static void usage(const char *prog)
     "  --verify                  compare la longueur trouvee a l'oracle BFS\n"
     "  --show                    affiche la solution pas a pas\n"
     "  --quiet                   pas de sortie par instance\n"
+    "\n"
+    "Analyse (3x3 uniquement, sortent immediatement, aucun CSV) :\n"
+    "  --enumerate               distribution exacte des profondeurs optimales\n"
+    "  --dist N                  teste la loi du generateur sur N tirages\n"
     "  --help\n"
     "\n"
     "Plateau compile : %dx%d\n",
@@ -228,6 +235,10 @@ int main(int argc, char *argv[])
       c.show = 1;
     } else if (!strcmp(a, "--quiet")) {
       c.quiet = 1;
+    } else if (!strcmp(a, "--enumerate")) {
+      c.enumerate = 1;
+    } else if (!strcmp(a, "--dist")) {
+      WANT_LONG(c.dist_samples, 1, 100000000);
     } else if (!strcmp(a, "--help") || !strcmp(a, "-h")) {
       usage(argv[0]); return 0;
     } else {
@@ -248,6 +259,13 @@ int main(int argc, char *argv[])
       fprintf(stderr, "note : --impl est ignore avec --algo ida (ni tas, ni "
                       "table d'etats). La colonne CSV vaudra \"n/a\".\n");
     c.o.impl = IMPL_NA;
+  }
+
+  /* Modes d'analyse : ils sortent immediatement et n'ecrivent aucun CSV. */
+  if (c.enumerate) { enum_report(); return WH_BOARD == 3 ? 0 : 2; }
+  if (c.dist_samples > 0) {
+    enum_generator_test((long)c.dist_samples, c.shuffle, c.seed);
+    return WH_BOARD == 3 ? 0 : 2;
   }
 
   if (c.runs < 1) c.runs = 1;

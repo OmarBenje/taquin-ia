@@ -9,7 +9,7 @@ OBJ       = $(BIN)/obj
 OBJ15     = $(BIN)/obj15
 
 # Cœur du jeu, partagé par tous les binaires.
-CORE      = src/puzzle.c src/heuristic.c
+CORE      = src/puzzle.c src/heuristic.c src/enumerate.c
 # Adaptateur vers la structure Item du squelette fourni.
 KIT       = src/board.c starting-kit/list.c
 # Solveur instrumenté.
@@ -21,7 +21,7 @@ LIB_O15   = $(patsubst %.c,$(OBJ15)/%.o,$(LIB))
 
 BINARIES  = $(BIN)/taquin $(BIN)/taquin15 $(BIN)/taquin_vs $(BIN)/taquin_baseline
 TESTS     = $(BIN)/test_puzzle $(BIN)/test_heuristic $(BIN)/test_pqueue \
-            $(BIN)/test_hashset $(BIN)/test_search
+            $(BIN)/test_hashset $(BIN)/test_search $(BIN)/test_enumerate
 
 .PHONY: all help demo test bench report clean FORCE
 .DEFAULT_GOAL := all
@@ -99,6 +99,8 @@ $(BIN)/test_hashset:   $(OBJ)/tests/test_hashset.o   $(LIB_O)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 $(BIN)/test_search:    $(OBJ)/tests/test_search.o    $(LIB_O)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
+$(BIN)/test_enumerate: $(OBJ)/tests/test_enumerate.o $(LIB_O)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
 test: $(TESTS)
 	@fail=0; for t in $(TESTS); do ./$$t || fail=1; done; \
@@ -113,4 +115,6 @@ clean:
 -include $(OBJ)/src/taquin_vs.d $(OBJ)/src/baseline.d
 -include $(OBJ)/tests/test_puzzle.d $(OBJ)/tests/test_heuristic.d
 -include $(OBJ)/tests/test_pqueue.d $(OBJ)/tests/test_hashset.d
--include $(OBJ)/tests/test_search.d
+-include $(OBJ)/tests/test_search.d $(OBJ)/tests/test_enumerate.d
+
+# Ajoute aussi l'aide sur les options d'analyse.

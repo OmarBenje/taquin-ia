@@ -1,0 +1,32 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compiler
+        run: make all
+
+      - name: Tests
+        run: make test
+
+      # Le banc complet dure ~3 min 30. SCALE=20 le ramène à ~20 s : assez
+      # pour prouver que le pipeline tourne de bout en bout, les valeurs
+      # publiées venant des CSV commités.
+      - name: Banc court
+        run: SCALE=20 ./bench/run_bench.sh
+
+      # `git describe --dirty` dans ENVIRONMENT.txt fait diverger le fichier à
+      # chaque exécution : on ne compare que le fait d'avoir produit des CSV.
+      - name: Les CSV sont non vides
+        run: for f in results/*.csv; do test -s "$f" || exit 1; done

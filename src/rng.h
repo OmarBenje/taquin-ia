@@ -15,7 +15,7 @@
  *      passe par un `float` : pour x = 4 et rand() proche de RAND_MAX, le
  *      produit 4 * 2147483647 = 8589934588 s'arrondit au float le plus proche,
  *      8589934592 = 4 * 2^31, et le résultat vaut exactement 4.0 — soit un
- *      indice hors bornes dans `neighbors[4]`.  Voir docs/RETROSPECTIVE.md.
+ *      indice hors bornes dans `neighbors[4]`.  Voir docs/RETROSPECTIVE.md et docs/DESIGN.md.
  */
 
 typedef struct {

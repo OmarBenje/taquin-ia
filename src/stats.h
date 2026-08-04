@@ -31,6 +31,24 @@ typedef struct {
   size_t bytes_peak;
   double hash_probes;    /* longueur de chaîne moyenne parcourue (impl fast) */
   double seconds;
+
+  /*
+   * Propres à IDA*.
+   *
+   * last_iter_generated : nœuds engendrés par la DERNIÈRE itération.
+   *   generated / last_iter_generated est le facteur de ré-exploration, et
+   *   c'est un chiffre, pas une intuition.
+   * max_depth : profondeur maximale atteinte. Pour IDA*, open_max vaut
+   *   max_depth + 1 : la pile est sa seule « open list », et c'est en
+   *   nœuds retenus simultanément qu'on peut honnêtement le comparer à A*.
+   *
+   * Attention en lisant les CSV : pour A*, `expanded` compte des états
+   * distincts ; pour IDA*, il compte des VISITES, ré-explorations comprises,
+   * cumulées sur toutes les itérations. Les deux colonnes n'ont pas le même
+   * sens selon l'algorithme.
+   */
+  long   last_iter_generated;
+  int    max_depth;
   int    solution_len;   /* -1 si non résolu */
   int    iterations;     /* itérations d'approfondissement (IDA*) */
   int    aborted;        /* 1 si la limite --max-nodes a été atteinte */

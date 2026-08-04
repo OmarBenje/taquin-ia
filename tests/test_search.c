@@ -42,6 +42,7 @@ int main(void)
   long  expanded_by_h[H_COUNT] = { 0 };
   int   naive_runs = 0, naive_suboptimal = 0, naive_excess = 0;
   int   list_naive_runs = 0, list_naive_suboptimal = 0;
+  long  ida_total = 0, ida_last = 0;
 
   rng_seed(&rng, 2026);
 
@@ -119,6 +120,39 @@ int main(void)
     naive_runs++;
     if (len != rlen) { naive_suboptimal++; naive_excess += len - rlen; }
 
+    /*
+     * IDA* : meme longueur que l'oracle, quelle que soit l'heuristique.
+     * Il n'a pas de table d'etats visites, donc il reexplore ; ce qu'on
+     * verifie ici c'est qu'il ne se trompe pas. Le cout est mesure a part.
+     */
+    for (h = 0; h < H_COUNT; h++) {
+      CHECK(solve(ALGO_IDA, IMPL_NA, h, DUP_NAIVE,
+                  start, &st, path, &len) == SEARCH_OK, "IDA*");
+      CHECK(len == rlen, "IDA*/%s rend %d coups, l'oracle en donne %d",
+            heuristic_name(h), len, rlen);
+      CHECK(replay_ok(start, path, len), "le chemin d'IDA* doit mener au but");
+      CHECK(st.iterations >= 1, "IDA* doit compter ses iterations");
+
+      /* Signature structurelle d'IDA* : il ne ferme aucun etat. Sans ce
+         controle, un IDA* qui executerait A* en douce passerait tous les
+         tests de longueur — c'est exactement le piege que le plan avait
+         tendu en placant le branchement a l'interieur du switch. */
+      CHECK(st.closed_size == 0, "IDA* ne doit fermer aucun etat, vu %ld",
+            st.closed_size);
+      CHECK(st.open_max == st.max_depth + 1,
+            "l'open list d'IDA* est sa pile : %ld contre %d",
+            st.open_max, st.max_depth);
+
+      /* last_iter_generated > 0 est faux quand le depart EST le but. */
+      CHECK(st.last_iter_generated <= st.generated,
+            "la derniere iteration ne peut pas depasser le total");
+      CHECK(rlen == 0 || st.last_iter_generated > 0,
+            "une instance non triviale genere des noeuds");
+
+      ida_total += st.generated;
+      ida_last  += st.last_iter_generated;
+    }
+
     /* Meme mesure sur les listes du squelette : c'est le comportement exact
        du code d'origine. */
     if (cross_check_list) {
@@ -160,6 +194,50 @@ int main(void)
             "en cumule, %s developpe %ld noeuds, plus que %s (%ld)",
             heuristic_name(h), expanded_by_h[h],
             heuristic_name(h - 1), expanded_by_h[h - 1]);
+  }
+
+  printf("  IDA* : %ld noeuds generes, %ld sur la derniere iteration"
+         "  -> facteur de reexploration %.2f\n",
+         ida_total, ida_last,
+         ida_last ? (double)ida_total / (double)ida_last : 0.0);
+
+  /*
+   * IDA* est incomplet « vers le negatif » : sur un plateau insoluble il
+   * releverait son seuil indefiniment sans jamais conclure. Il doit donc
+   * tester la solvabilite AVANT de chercher. Sans ce garde-fou, ce test
+   * ne se termine pas.
+   */
+#if WH_BOARD == 3
+  {
+    cell_t  bad[9] = { 2, 1, 3, 4, 5, 6, 7, 8, 0 };
+    stats_t st;
+    int     len = 0;
+
+    CHECK(solve(ALGO_IDA, IMPL_NA, H_MANHATTAN, DUP_NAIVE,
+                bad, &st, NULL, &len) == SEARCH_NOSOL,
+          "IDA* doit conclure NOSOL sur un plateau insoluble, pas boucler");
+    CHECK(st.generated == 0,
+          "il doit le conclure sans explorer, vu %ld noeuds", st.generated);
+  }
+#endif
+
+  /* La limite --max-nodes doit aussi interrompre IDA*, dont le chemin
+     d'abandon traverse deux niveaux de depilage manuel. */
+  {
+    cell_t  start[MAX_BOARD];
+    stats_t st;
+    search_opts o;
+    int     len = 0;
+
+    memset(&o, 0, sizeof(o));
+    o.algo = ALGO_IDA; o.impl = IMPL_NA; o.heuristic = H_ZERO;
+    o.dup = DUP_NAIVE; o.max_nodes = 1000;
+
+    puzzle_goal(start);
+    puzzle_shuffle(start, 200, &rng);
+    CHECK(search_solve(&o, start, &st, NULL, 0, &len) == SEARCH_ABORTED,
+          "la limite de noeuds doit interrompre IDA*");
+    CHECK(st.aborted == 1 && st.generated >= 1000, "l'abandon doit etre signale");
   }
 
   /* La limite --max-nodes doit interrompre proprement. */

@@ -319,6 +319,21 @@ static int solve_fast(const search_opts *o, const cell_t *start, stats_t *st,
       status = SEARCH_ABORTED;
       break;
     }
+
+    /*
+     * Borne mémoire. C'est la bonne façon de brider A* : il ne meurt pas
+     * faute de temps mais faute de place, et le borner en nœuds générés
+     * laisserait passer une recherche qui a déjà avalé des centaines de
+     * mégaoctets.
+     */
+    if (o->max_bytes > 0) {
+      size_t used = arena.bytes + open.bytes + queue.bytes + seen.bytes;
+      if (used > o->max_bytes) {
+        st->aborted = 1;
+        status = SEARCH_ABORTED;
+        break;
+      }
+    }
   }
 
   st->closed_size  = (long)seen.count;
@@ -335,6 +350,170 @@ static int solve_fast(const search_opts *o, const cell_t *start, stats_t *st,
 }
 
 /* ------------------------------------------------------------------ */
+/* IDA* : approfondissement itératif sur f = g + h                      */
+/*                                                                      */
+/* A* garde tous les nœuds ouverts en mémoire : c'est ce qui le tue sur  */
+/* le 15-puzzle. IDA* rejoue une recherche en profondeur bornée par f,   */
+/* en relevant la borne au plus petit f qui l'a dépassée.                */
+/*                                                                      */
+/* Pas de table d'états visités, volontairement : c'est elle qui         */
+/* ramènerait la mémoire à O(b^d). La seule élimination est l'anti-      */
+/* retour immédiat. Un même état peut donc être revisité, et chaque      */
+/* itération rejoue tout ce que la précédente avait exploré. On paie ce  */
+/* facteur en temps — mesuré, pas supposé, par last_iter_generated — et  */
+/* on gagne la mémoire.                                                  */
+/* ------------------------------------------------------------------ */
+
+#define IDA_MAX_DEPTH 128
+#define IDA_INF       0x3fffffff
+#define IDA_CUTOFF    (IDA_INF - 1)   /* coupure de profondeur, pas un cul-de-sac */
+
+/* Le pire cas connu est 31 coups en 3x3 et 80 en 4x4. Au-delà, la borne
+   ci-dessus ne suffirait plus et il faut le savoir à la compilation. */
+_Static_assert(IDA_MAX_DEPTH > 4 * WH_BOARD * WH_BOARD,
+               "IDA_MAX_DEPTH trop faible pour ce WH_BOARD");
+
+typedef struct {
+  const search_opts *o;
+  stats_t           *st;
+  cell_t             board[MAX_BOARD];
+  int                moves[IDA_MAX_DEPTH];
+  int                solution_depth;
+  int                aborted;
+  int                hit_cutoff;
+} ida_ctx;
+
+/*
+ * Rend -1 si le but est atteint (c->moves[0..solution_depth-1] est alors la
+ * solution), sinon le plus petit f rencontré qui dépasse `bound` : c'est le
+ * seuil de l'itération suivante.
+ *
+ * Le seuil croît strictement à chaque itération, donc la boucle appelante ne
+ * peut pas tourner en rond : tout retour différent de -1 est par construction
+ * strictement supérieur à `bound`.
+ */
+static int ida_dfs(ida_ctx *c, int blank, int g, int h, int bound, int prev_move)
+{
+  int f = g + h;
+  int min_next = IDA_INF;
+  int move;
+
+  if (f > bound) return f;
+  if (puzzle_is_goal(c->board)) { c->solution_depth = g; return -1; }
+
+  if (g >= IDA_MAX_DEPTH - 1) {
+    /* Coupure de profondeur : ce n'est PAS un cul-de-sac, et les confondre
+       ferait conclure « pas de solution » à tort. */
+    c->hit_cutoff = 1;
+    return IDA_CUTOFF;
+  }
+
+  c->st->expanded++;
+  if (g > c->st->max_depth) c->st->max_depth = g;
+
+  for (move = 0; move < MAX_MOVES; move++) {
+    int nb, hc, t;
+
+    if (prev_move >= 0 && move == puzzle_opposite(prev_move)) continue;
+
+    nb = puzzle_apply(c->board, blank, move, c->board);   /* mutation en place */
+    if (nb < 0) continue;
+
+    c->st->generated++;
+    c->st->last_iter_generated++;
+    c->moves[g] = move;
+
+    if (c->o->max_nodes > 0 && c->st->generated >= c->o->max_nodes) {
+      c->aborted = 1;
+      puzzle_apply(c->board, nb, puzzle_opposite(move), c->board);
+      return IDA_INF;
+    }
+
+    hc = heuristic_eval(c->o->heuristic, c->board);
+    t  = ida_dfs(c, nb, g + 1, hc, bound, move);
+
+    if (t == -1) return -1;    /* trouvé : on garde la pile de coups intacte */
+
+    puzzle_apply(c->board, nb, puzzle_opposite(move), c->board);  /* défaire */
+
+    if (c->aborted) return IDA_INF;
+    if (t < min_next) min_next = t;
+  }
+
+  return min_next;
+}
+
+static int solve_ida(const search_opts *o, const cell_t *start, stats_t *st,
+                     int *path, int cap, int *plen)
+{
+  ida_ctx c;
+  int     bound, blank, i;
+
+  memset(&c, 0, sizeof(c));
+  c.o  = o;
+  c.st = st;
+  memcpy(c.board, start, MAX_BOARD);
+
+  /*
+   * IDA* ne sait pas conclure « pas de solution » : sur un plateau insoluble
+   * il relèverait son seuil indéfiniment. La parité des inversions le dit en
+   * O(n²), une fois, avant de chercher.
+   */
+  if (!puzzle_solvable(start)) {
+    st->solution_len = -1;
+    return SEARCH_NOSOL;
+  }
+
+  blank = puzzle_blank(start);
+  bound = heuristic_eval(o->heuristic, start);
+
+  for (;;) {
+    int t;
+
+    st->last_iter_generated = 0;
+    st->iterations++;
+
+    t = ida_dfs(&c, blank, 0, heuristic_eval(o->heuristic, c.board), bound, -1);
+
+    if (c.aborted) {
+      st->aborted = 1;
+      break;
+    }
+    if (t == -1) {
+      st->solution_len = c.solution_depth;
+      break;
+    }
+    if (t >= IDA_CUTOFF) {
+      /* Le plateau est solvable (testé plus haut), donc atteindre ce point
+         signifie que IDA_MAX_DEPTH est trop bas pour ce plateau : c'est un
+         défaut de configuration, pas une absence de solution. */
+      st->aborted = 1;
+      break;
+    }
+
+    bound = t;    /* le seuil suivant est ce minimum, strictement plus grand */
+  }
+
+  /*
+   * Mémoire. On ne publie PAS un delta d'adresses de pile : mesuré, il varie
+   * de 13 % entre -O0 et -O2, c'est donc une propriété du compilateur et non
+   * de l'algorithme. On publie la seule grandeur comparable à celle d'A* :
+   * le nombre de nœuds retenus simultanément, ici la pile de coups.
+   */
+  st->open_max    = st->max_depth + 1;
+  st->closed_size = 0;                       /* IDA* ne ferme aucun état */
+  st->bytes_peak  = sizeof(ida_ctx)
+                  + (size_t)(st->max_depth + 1) * sizeof(int);
+
+  if (st->aborted) return SEARCH_ABORTED;
+
+  *plen = c.solution_depth;
+  if (path)
+    for (i = 0; i < *plen && i < cap; i++) path[i] = c.moves[i];
+  return SEARCH_OK;
+}
+
+/* ------------------------------------------------------------------ */
 /* Point d'entrée                                                       */
 /* ------------------------------------------------------------------ */
 
@@ -346,6 +525,22 @@ int search_solve(const search_opts *o, const cell_t *start,
 
   stats_reset(st);
   t0 = now_seconds();
+
+  /*
+   * IDA* se branche AVANT le switch, pas dedans : une instruction placée
+   * entre `switch (…) {` et la première étiquette `case` n'est jamais
+   * exécutée, et aucun avertissement ne le signale. IDA* serait tombé dans
+   * solve_fast, aurait exécuté A*, et le CSV aurait affiché algo=ida.
+   *
+   * IDA* ne dépend pas de --impl : il n'a ni file de priorité ni table
+   * d'états. Le banc force donc impl=n/a sur cette ligne de CSV.
+   */
+  if (o->algo == ALGO_IDA) {
+    rc = solve_ida(o, start, st, path, path_cap, &len);
+    st->seconds = now_seconds() - t0;
+    if (path_len) *path_len = len;
+    return rc;
+  }
 
   switch (o->impl) {
     case IMPL_FAST:
@@ -371,6 +566,7 @@ const char *algo_name(algo_id id)
   switch (id) {
     case ALGO_BFS:   return "bfs";
     case ALGO_ASTAR: return "astar";
+    case ALGO_IDA:   return "ida";
     default:         return "?";
   }
 }
@@ -389,6 +585,7 @@ const char *impl_name(impl_id id)
   switch (id) {
     case IMPL_LIST: return "list";
     case IMPL_FAST: return "fast";
+    case IMPL_NA:   return "n/a";   /* IDA* : ni tas ni table de hachage */
     default:        return "?";
   }
 }

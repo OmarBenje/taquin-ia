@@ -5,7 +5,20 @@
 #include "heuristic.h"
 #include "stats.h"
 
-typedef enum { ALGO_BFS = 0, ALGO_ASTAR, ALGO_COUNT } algo_id;
+/*
+ * ALGO_IDA : approfondissement itératif sur f = g + h.
+ *
+ * Il n'a PAS de table d'états visités — c'est elle qui ramènerait la mémoire
+ * à O(b^d) et ferait perdre tout l'intérêt. La seule élimination est
+ * l'anti-retour immédiat, donc un même état peut être revisité et chaque
+ * itération rejoue ce que la précédente avait déjà exploré.
+ *
+ * Conséquence à connaître : IDA* est incomplet « vers le négatif ». Sur un
+ * plateau insoluble il relève son seuil indéfiniment sans jamais conclure.
+ * solve_ida teste donc la solvabilité par la parité des inversions avant de
+ * chercher, plutôt que de laisser la recherche tourner sans fin.
+ */
+typedef enum { ALGO_BFS = 0, ALGO_ASTAR, ALGO_IDA, ALGO_COUNT } algo_id;
 
 /*
  * IMPL_LIST : les listes chaînées du squelette (starting-kit/list.c).
@@ -15,7 +28,7 @@ typedef enum { ALGO_BFS = 0, ALGO_ASTAR, ALGO_COUNT } algo_id;
  *             par test d'appartenance) et allocateur par blocs. C'est le
  *             « après ». Les deux doivent rendre la même longueur de solution.
  */
-typedef enum { IMPL_LIST = 0, IMPL_FAST, IMPL_COUNT } impl_id;
+typedef enum { IMPL_LIST = 0, IMPL_FAST, IMPL_COUNT, IMPL_NA } impl_id;
 
 /*
  * Que faire d'un fils dont l'état est déjà connu ?
@@ -31,7 +44,16 @@ typedef struct {
   impl_id      impl;
   heuristic_id heuristic;
   dup_policy   dup;
+
+  /*
+   * Deux bornes, parce que les deux algorithmes meurent de causes
+   * différentes : A* meurt en MÉMOIRE, IDA* meurt en TEMPS. Un compteur
+   * unique ne peut pas arbitrer les deux — le borner en nœuds générés
+   * pénalise IDA*, qui les cumule sur toutes ses itérations, et laisse
+   * passer un A* qui a déjà avalé des centaines de mégaoctets.
+   */
   long         max_nodes;    /* 0 = illimité */
+  size_t       max_bytes;    /* 0 = illimité */
 } search_opts;
 
 #define SEARCH_OK       0

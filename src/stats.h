@@ -29,6 +29,7 @@ typedef struct {
   long   open_max;
   long   closed_size;
   size_t bytes_peak;
+  double hash_probes;    /* longueur de chaîne moyenne parcourue (impl fast) */
   double seconds;
   int    solution_len;   /* -1 si non résolu */
   int    iterations;     /* itérations d'approfondissement (IDA*) */

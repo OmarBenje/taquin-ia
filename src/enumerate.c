@@ -284,10 +284,19 @@ void enum_generator_test(long samples, int shuffle, uint64_t seed)
            100.0 * exp_degpar[k] / (double)samples);
   printf("\n");
 
-  print_verdict("H1 : loi uniforme sur les etats solvables",
-                chi2_fit(obs_blank, exp_unif, MAX_BOARD, &df, NULL), df);
-  print_verdict("H2 : proportionnelle au degre",
-                chi2_fit(obs_blank, exp_deg, MAX_BOARD, &df, NULL), df);
+  /*
+   * L'ordre d'evaluation des arguments d'un appel n'est PAS specifie en C :
+   * ecrire print_verdict(…, chi2_fit(…, &df), df) laisse le compilateur lire
+   * `df` AVANT que chi2_fit ne l'ecrive. On sequence explicitement.
+   */
+  {
+    double chi2 = chi2_fit(obs_blank, exp_unif, MAX_BOARD, &df, NULL);
+    print_verdict("H1 : loi uniforme sur les etats solvables", chi2, df);
+  }
+  {
+    double chi2 = chi2_fit(obs_blank, exp_deg, MAX_BOARD, &df, NULL);
+    print_verdict("H2 : proportionnelle au degre", chi2, df);
+  }
   {
     double chi2 = chi2_fit(obs_blank, exp_degpar, MAX_BOARD, &df, &impossible);
     print_verdict("H3 : proportionnelle au degre, a parite fixee", chi2, df);

@@ -1,3 +1,17 @@
+/*
+ * -std=c11 definit __STRICT_ANSI__, ce qui masque CLOCK_MONOTONIC et
+ * getrusage sur glibc : le code ne compilait que sur macOS, dont la libc est
+ * plus permissive. Ces deux macros les redemandent explicitement.
+ * Trouve par l'integration continue au premier passage sur Linux.
+ */
+#if defined(__APPLE__)
+/* Sur macOS, _POSIX_C_SOURCE ferait au contraire disparaitre ru_maxrss. */
+#  define _DARWIN_C_SOURCE
+#else
+#  define _POSIX_C_SOURCE 200809L
+#  define _DEFAULT_SOURCE
+#endif
+
 #include <string.h>
 #include <time.h>
 #include <sys/resource.h>

@@ -4,6 +4,9 @@
 #include "search.h"
 #include "board.h"
 #include "list.h"
+#include "node.h"
+#include "pqueue.h"
+#include "hashset.h"
 
 /*
  * Coût mémoire d'un nœud dans l'implémentation « list » : la structure Item
@@ -146,6 +149,192 @@ static int solve_list(const search_opts *o, const cell_t *start, stats_t *st,
 }
 
 /* ------------------------------------------------------------------ */
+/* File FIFO circulaire, pour le BFS de l'implémentation rapide         */
+/* ------------------------------------------------------------------ */
+
+typedef struct {
+  node_t **v;
+  size_t   head, n, cap, bytes;
+} fifo_t;
+
+static void fifo_init(fifo_t *q)
+{
+  q->v = NULL;
+  q->head = q->n = q->cap = q->bytes = 0;
+}
+
+static void fifo_free(fifo_t *q)
+{
+  free(q->v);
+  fifo_init(q);
+}
+
+static void fifo_push(fifo_t *q, node_t *x)
+{
+  if (q->n == q->cap) {
+    size_t cap = q->cap ? q->cap * 2 : 1024, i;
+    node_t **v = malloc(cap * sizeof(*v));
+
+    for (i = 0; i < q->n; i++) v[i] = q->v[(q->head + i) % q->cap];
+    free(q->v);
+    q->v = v; q->cap = cap; q->head = 0;
+    q->bytes = cap * sizeof(*v);
+  }
+  q->v[(q->head + q->n) % q->cap] = x;
+  q->n++;
+}
+
+static node_t *fifo_pop(fifo_t *q)
+{
+  node_t *x;
+
+  if (q->n == 0) return NULL;
+  x = q->v[q->head];
+  q->head = (q->head + 1) % q->cap;
+  q->n--;
+  return x;
+}
+
+/* ------------------------------------------------------------------ */
+/* Implémentation « fast » : tas binaire + table de hachage             */
+/*                                                                      */
+/* Mêmes règles, mêmes politiques de doublons que solve_list ; seules   */
+/* les structures de données changent.                                  */
+/* ------------------------------------------------------------------ */
+
+static void node_reset(node_t *n, const cell_t *board, int blank,
+                       int g, int h, node_t *parent)
+{
+  memcpy(n->board, board, MAX_BOARD);
+  n->parent   = parent;
+  n->hnext    = NULL;
+  n->g        = g;
+  n->h        = h;
+  n->heap_idx = -1;
+  n->blank    = (unsigned char)blank;
+  n->closed   = 0;
+}
+
+static void extract_path_nodes(node_t *goal, int *path, int cap, int *plen)
+{
+  node_t *cur;
+  int     len = 0, i;
+
+  for (cur = goal; cur && cur->parent; cur = cur->parent) len++;
+  *plen = len;
+  if (!path) return;
+
+  i = len - 1;
+  for (cur = goal; cur && cur->parent; cur = cur->parent, i--)
+    if (i >= 0 && i < cap)
+      path[i] = move_between(cur->parent->blank, cur->blank);
+}
+
+static int solve_fast(const search_opts *o, const cell_t *start, stats_t *st,
+                      int *path, int cap, int *plen)
+{
+  arena_t arena;
+  heap_t  open;
+  fifo_t  queue;
+  hset_t  seen;
+  node_t *root, *cur;
+  int     status = SEARCH_NOSOL;
+  int     use_heap = (o->algo != ALGO_BFS);
+
+  arena_init(&arena);
+  hset_init(&seen);
+  heap_init(&open);
+  fifo_init(&queue);
+
+  root = arena_new(&arena);
+  node_reset(root, start, puzzle_blank(start), 0,
+             use_heap ? heuristic_eval(o->heuristic, start) : 0, NULL);
+  hset_insert(&seen, root);
+  st->generated = 1;
+  if (use_heap) heap_push(&open, root); else fifo_push(&queue, root);
+  st->open_max = 1;
+
+  for (;;) {
+    size_t open_n;
+    int    move;
+
+    cur = use_heap ? heap_pop(&open) : fifo_pop(&queue);
+    if (!cur) break;
+
+    if (puzzle_is_goal(cur->board)) {
+      extract_path_nodes(cur, path, cap, plen);
+      st->solution_len = *plen;
+      status = SEARCH_OK;
+      break;
+    }
+
+    cur->closed = 1;
+    st->expanded++;
+
+    for (move = 0; move < MAX_MOVES; move++) {
+      cell_t  next[MAX_BOARD];
+      node_t *dup, *child;
+      int     nb, newg;
+
+      nb = puzzle_apply(cur->board, cur->blank, move, next);
+      if (nb < 0) continue;
+
+      st->generated++;
+      newg = cur->g + 1;
+
+      dup = hset_find(&seen, next);
+      if (dup) {
+        st->duplicates++;
+
+        /* Le BFS trouve toujours le plus court chemin en premier : il n'y a
+           rien à améliorer. Pour A*, voir README question 3. */
+        if (use_heap && o->dup == DUP_GCOMPARE && newg < dup->g) {
+          dup->g      = newg;
+          dup->parent = cur;
+          st->improved++;
+          if (dup->heap_idx >= 0) {
+            heap_decrease(&open, dup);
+          } else if (dup->closed) {
+            /* Réouverture. Avec une heuristique consistante, ceci ne devrait
+               jamais se produire ; le compteur `improved` le prouve ou non. */
+            dup->closed = 0;
+            heap_push(&open, dup);
+          }
+        }
+        continue;
+      }
+
+      child = arena_new(&arena);
+      node_reset(child, next, nb, newg,
+                 use_heap ? heuristic_eval(o->heuristic, next) : 0, cur);
+      hset_insert(&seen, child);
+      if (use_heap) heap_push(&open, child); else fifo_push(&queue, child);
+    }
+
+    open_n = use_heap ? heap_size(&open) : queue.n;
+    if ((long)open_n > st->open_max) st->open_max = (long)open_n;
+
+    if (o->max_nodes > 0 && st->generated >= o->max_nodes) {
+      st->aborted = 1;
+      status = SEARCH_ABORTED;
+      break;
+    }
+  }
+
+  st->closed_size  = (long)seen.count;
+  st->hash_probes  = hset_avg_probes(&seen);
+  /* Les trois structures ne rendent jamais de mémoire en cours de route :
+     leur taille finale est donc leur pic. */
+  st->bytes_peak   = arena.bytes + open.bytes + queue.bytes + seen.bytes;
+
+  arena_free(&arena);
+  heap_free(&open);
+  fifo_free(&queue);
+  hset_free(&seen);
+  return status;
+}
+
+/* ------------------------------------------------------------------ */
 /* Point d'entrée                                                       */
 /* ------------------------------------------------------------------ */
 
@@ -159,6 +348,9 @@ int search_solve(const search_opts *o, const cell_t *start,
   t0 = now_seconds();
 
   switch (o->impl) {
+    case IMPL_FAST:
+      rc = solve_fast(o, start, st, path, path_cap, &len);
+      break;
     case IMPL_LIST:
     default:
       rc = solve_list(o, start, st, path, path_cap, &len);
@@ -196,6 +388,7 @@ const char *impl_name(impl_id id)
 {
   switch (id) {
     case IMPL_LIST: return "list";
+    case IMPL_FAST: return "fast";
     default:        return "?";
   }
 }

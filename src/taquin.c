@@ -32,7 +32,9 @@ static void usage(const char *prog)
     "\n"
     "  --algo bfs|astar          algorithme de recherche      (defaut: astar)\n"
     "  --heuristic NOM           zero|misplaced|manhattan|linear (defaut: manhattan)\n"
-    "  --impl list               structures de donnees        (defaut: list)\n"
+    "  --impl list|fast          structures de donnees        (defaut: fast)\n"
+    "                            list = listes du squelette (O(n) par test)\n"
+    "                            fast = tas binaire + table de hachage\n"
     "  --dup naive|gcompare      doublons sur l'open list     (defaut: gcompare)\n"
     "  --seed N                  graine du generateur         (defaut: 42)\n"
     "  --runs N                  nombre d'instances           (defaut: 1)\n"
@@ -64,20 +66,21 @@ static void csv_header(FILE *f)
 {
   fprintf(f, "run,seed,size,algo,impl,heuristic,dup,shuffle,status,"
              "solution_len,optimal,generated,expanded,duplicates,improved,"
-             "open_max,closed,bytes_peak,seconds\n");
+             "open_max,closed,bytes_peak,hash_probes,seconds\n");
 }
 
 static void csv_row(FILE *f, const cli_t *c, int run, unsigned long long seed,
                     int rc, const stats_t *s, int optimal)
 {
-  fprintf(f, "%d,%llu,%d,%s,%s,%s,%s,%d,%s,%d,%d,%ld,%ld,%ld,%ld,%ld,%ld,%zu,%.6f\n",
+  fprintf(f, "%d,%llu,%d,%s,%s,%s,%s,%d,%s,%d,%d,%ld,%ld,%ld,%ld,%ld,%ld,%zu,%.3f,%.6f\n",
           run, seed, WH_BOARD,
           algo_name(c->o.algo), impl_name(c->o.impl),
           heuristic_name(c->o.heuristic), dup_name(c->o.dup),
           c->shuffle, status_name(rc),
           s->solution_len, optimal,
           s->generated, s->expanded, s->duplicates, s->improved,
-          s->open_max, s->closed_size, s->bytes_peak, s->seconds);
+          s->open_max, s->closed_size, s->bytes_peak, s->hash_probes,
+          s->seconds);
 }
 
 static void show_solution(const cell_t *start, const int *path, int len)
@@ -119,14 +122,14 @@ int main(int argc, char *argv[])
   cli_t c;
   FILE *csv = NULL;
   int   i, run;
-  long  tot_generated = 0, tot_expanded = 0, tot_open_max = 0;
-  double tot_seconds = 0.0;
+  long  tot_generated = 0, tot_expanded = 0, tot_open_max = 0, tot_improved = 0;
+  double tot_seconds = 0.0, tot_probes = 0.0;
   long  tot_len = 0, solved = 0, aborted = 0, mismatches = 0, invalid = 0;
   size_t max_bytes = 0;
 
   memset(&c, 0, sizeof(c));
   c.o.algo      = ALGO_ASTAR;
-  c.o.impl      = IMPL_LIST;
+  c.o.impl      = IMPL_FAST;
   c.o.heuristic = H_MANHATTAN;
   c.o.dup       = DUP_GCOMPARE;
   c.o.max_nodes = 0;
@@ -224,7 +227,9 @@ int main(int argc, char *argv[])
 
     tot_generated += st.generated;
     tot_expanded  += st.expanded;
+    tot_improved  += st.improved;
     tot_seconds   += st.seconds;
+    tot_probes    += st.hash_probes;
     if (st.open_max > tot_open_max) tot_open_max = st.open_max;
     if (st.bytes_peak > max_bytes)  max_bytes = st.bytes_peak;
 
@@ -268,6 +273,10 @@ int main(int argc, char *argv[])
   printf("  noeuds developpes   : %ld  (moyenne %.0f)\n",
          tot_expanded, (double)tot_expanded / c.runs);
   printf("  open list max       : %ld noeuds\n", tot_open_max);
+  printf("  chemins ameliores   : %ld  (fils trouvant un meilleur g)\n", tot_improved);
+  if (c.o.impl == IMPL_FAST)
+    printf("  chaine de hachage   : %.3f noeud(s) examine(s) par recherche\n",
+           tot_probes / c.runs);
   printf("  memoire pic         : %.1f Ko (recherche) / %.1f Ko (processus)\n",
          (double)max_bytes / 1024.0, (double)process_peak_rss() / 1024.0);
   printf("  temps total         : %.3f s  (moyenne %.3f ms/instance)\n",

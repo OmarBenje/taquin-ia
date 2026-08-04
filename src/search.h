@@ -11,8 +11,11 @@ typedef enum { ALGO_BFS = 0, ALGO_ASTAR, ALGO_COUNT } algo_id;
  * IMPL_LIST : les listes chaînées du squelette (starting-kit/list.c).
  *             popBest est en O(n), onList en O(n) avec un memcmp par nœud —
  *             A* est donc en O(n²) sur la taille des listes. C'est le « avant ».
+ * IMPL_FAST : tas binaire (O(log n) par extraction), table de hachage (O(1)
+ *             par test d'appartenance) et allocateur par blocs. C'est le
+ *             « après ». Les deux doivent rendre la même longueur de solution.
  */
-typedef enum { IMPL_LIST = 0, IMPL_COUNT } impl_id;
+typedef enum { IMPL_LIST = 0, IMPL_FAST, IMPL_COUNT } impl_id;
 
 /*
  * Que faire d'un fils dont l'état est déjà connu ?

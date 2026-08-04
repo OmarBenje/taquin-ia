@@ -12,7 +12,8 @@ KIT      = src/board.c starting-kit/list.c
 # Solveur instrumenté.
 SEARCH   = src/search.c src/stats.c
 
-TESTS    = $(BIN)/test_puzzle $(BIN)/test_heuristic $(BIN)/test_pqueue
+TESTS    = $(BIN)/test_puzzle $(BIN)/test_heuristic $(BIN)/test_pqueue \
+           $(BIN)/test_hashset
 
 .PHONY: all test clean
 
@@ -41,6 +42,9 @@ $(BIN)/test_heuristic: tests/test_heuristic.c $(CORE) | $(BIN)
 	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LDLIBS)
 
 $(BIN)/test_pqueue: tests/test_pqueue.c src/pqueue.c src/node.c $(CORE) | $(BIN)
+	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LDLIBS)
+
+$(BIN)/test_hashset: tests/test_hashset.c src/hashset.c src/node.c $(CORE) | $(BIN)
 	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LDLIBS)
 
 test: $(TESTS)

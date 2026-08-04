@@ -3,9 +3,10 @@
 - **PR** : https://github.com/OmarBenje/taquin-ia/pull/2
 - **Issue** : [#1](https://github.com/OmarBenje/taquin-ia/issues/1) (`Closes #1`)
 - **Branche** : `phases-0-5` → `main`
-- **État** : ouverte, en attente de fusion
-- **Commits** : 16, chacun compile ; tous ceux postérieurs à l'ajout de la
+- **État** : **fusionnée** dans `main` (`2db706d`), issue #1 fermée
+- **Commits** : 18, chacun compile ; tous ceux postérieurs à l'ajout de la
   cible `test` la passent
+- **CI** : verte sur `main`, Ubuntu et macOS
 
 ---
 
@@ -80,7 +81,22 @@ linéaire avec retrait glouton, admissible).
 | `make bench` | **OK**, 3 min 32, 8 545 lignes de CSV |
 | `make report` | **OK**, idempotent |
 | Chiffres du README recoupés contre les CSV | **OK** |
-| CI (Linux + macOS) | ajoutée dans cette PR, premier passage sur la PR |
+| CI (Ubuntu + macOS) | **verte**, après correction de deux bugs qu'elle a trouvés |
+
+### Ce que la CI a trouvé à son premier passage
+
+Elle a échoué immédiatement sur Ubuntu, sur deux problèmes qu'aucune exécution
+locale ne pouvait révéler :
+
+- `-std=c11` définit `__STRICT_ANSI__`, ce qui masque `CLOCK_MONOTONIC` et
+  `getrusage` sur glibc. **Le projet ne compilait pas sur Linux.** Corrigé en
+  demandant explicitement `_POSIX_C_SOURCE` et `_DEFAULT_SOURCE` — mais
+  seulement hors macOS, où `_POSIX_C_SOURCE` fait au contraire disparaître
+  `ru_maxrss`.
+- `print_verdict(…, chi2_fit(…, &df, …), df)` lisait `df` dans le même appel qui
+  l'écrivait. L'ordre d'évaluation des arguments n'est pas spécifié en C : le
+  compilateur avait le droit de lire `df` avant l'appel. GCC l'a signalé, clang
+  non.
 
 ### Mesures publiées
 
@@ -118,8 +134,6 @@ linéaire avec retrait glouton, admissible).
 
 ## Points de suivi
 
-- **Fusionner la PR** pour que `origin/main` porte ce travail : le dépôt affiche
-  encore le README « Joueur vs IA ».
 - **Bases de motifs (pattern databases)** — hors périmètre assumé, mais c'est la
   suite logique : elles rendraient résolubles en secondes les instances qu'IDA\*
   met une minute à traiter.

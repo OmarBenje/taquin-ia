@@ -80,7 +80,7 @@ $(BIN)/taquin15: $(OBJ15)/src/taquin.o $(LIB_O15)
 $(BIN)/taquin_vs: $(OBJ)/src/taquin_vs.o $(LIB_O)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
-# Solveur BFS / A* d'origine, restauré depuis le commit c34e2a1 (seule la
+# Solveur BFS / A* d'origine, restauré depuis le commit 11f4e90 (seule la
 # graine a été rendue explicite). Référence historique : le « avant ».
 $(BIN)/taquin_baseline: $(OBJ)/src/baseline.o $(LIB_O)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)

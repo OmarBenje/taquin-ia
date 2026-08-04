@@ -3,7 +3,7 @@
 - **PR** : https://github.com/OmarBenje/taquin-ia/pull/2
 - **Issue** : [#1](https://github.com/OmarBenje/taquin-ia/issues/1) (`Closes #1`)
 - **Branche** : `phases-0-5` → `main`
-- **État** : **fusionnée** dans `main` (`2db706d`), issue #1 fermée
+- **État** : **fusionnée** dans `main` (`0804c2c`), issue #1 fermée
 - **Commits** : 18, chacun compile ; tous ceux postérieurs à l'ajout de la
   cible `test` la passent
 - **CI** : verte sur `main`, Ubuntu et macOS
@@ -35,7 +35,7 @@ affirmations.
 | `src/rng.h` | **nouveau** — splitmix64, tirage portable |
 | `src/puzzle.[ch]` | **nouveau** — règles du jeu sur plateau nu, `WH_BOARD` surchargeable |
 | `src/board.[ch]` | devient un adaptateur vers `Item` ; `RANDINIT()` sort d'`initGame` |
-| `src/baseline.c` | **restauré** depuis `c34e2a1` — le solveur supprimé, comme oracle |
+| `src/baseline.c` | **restauré** depuis `11f4e90` — le solveur supprimé, comme oracle |
 
 `--seed N` rejoue exactement la même instance, sur n'importe quelle machine.
 
@@ -102,7 +102,7 @@ locale ne pouvait révéler :
 
 | | avant | après |
 |---|---|---|
-| débit A\* | 125 713 nœuds/s | 20 209 800 nœuds/s (161×) |
+| débit A\* | 122 428 nœuds/s | 20 359 496 nœuds/s (166×) |
 | nœuds A\* contre BFS | — | 176× moins, solution identique |
 | 15-puzzle, mélange 200 | A\* 5/10, 123 Mo | IDA\* 10/10, 768 octets |
 | solutions non optimales | 116/1000 | 0/1000 |

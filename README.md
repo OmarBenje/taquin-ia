@@ -84,10 +84,10 @@ liste à chaque test, avec un `memcmp` par nœud. A\* était donc en O(n²).
 
 | structures | nœuds générés | temps total | débit |
 |---|---:|---:|---:|
-| `list` — les listes du squelette | 879 046 | 6,992 s | 125 713 nœuds/s |
-| `fast` — tas binaire + table de hachage | 442 534 | **0,022 s** | **20 209 800 nœuds/s** |
+| `list` — les listes du squelette | 879 046 | 7,180 s | 122 428 nœuds/s |
+| `fast` — tas binaire + table de hachage | 442 534 | **0,022 s** | **20 359 496 nœuds/s** |
 
-**161× de débit**, à longueur de solution identique. Le débit de la version sur
+**166× de débit**, à longueur de solution identique. Le débit de la version sur
 listes n'est pas une constante : il s'effondre à mesure que les listes
 grandissent, ce que montre la pente de la courbe.
 

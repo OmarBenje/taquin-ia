@@ -5,8 +5,8 @@ par `make bench` et régénérés en tableaux par `make report`. Aucun n'est
 saisi à la main.
 
 ```
-date        : 2026-08-04T15:39:53Z
-commit      : 910007d-dirty
+date        : 2026-08-04T16:05:21Z
+commit      : 8306bbf-dirty
 machine     : Darwin 25.5.0 arm64
 compilation : cc -std=c11 -Wall -Wextra -O2
 version cc  : Apple clang version 17.0.0 (clang-1700.6.3.2)
@@ -24,10 +24,10 @@ Mêmes instances pour les quatre, moitié de mélange pair et moitié impair.
 
 | heuristique | nœuds développés (médiane) | nœuds générés | temps (ms) | rapport à Manhattan |
 |---|---:|---:|---:|---:|
-| `zero` | 90 182 | 243 453 | 17.758 | 175.28× |
-| `misplaced` | 6 148 | 16 630 | 1.126 | 11.95× |
-| `manhattan` | 514 | 1 374 | 0.061 | 1.00× |
-| `linear` | 250 | 670 | 0.060 | 0.49× |
+| `zero` | 90 182 | 243 453 | 17.772 | 175.28× |
+| `misplaced` | 6 148 | 16 630 | 1.095 | 11.95× |
+| `manhattan` | 514 | 1 374 | 0.058 | 1.00× |
+| `linear` | 250 | 670 | 0.056 | 0.49× |
 
 ```
 ./bin/taquin --algo astar --heuristic manhattan --runs 500 --shuffle 200 --seed 1
@@ -37,8 +37,8 @@ Mêmes instances pour les quatre, moitié de mélange pair et moitié impair.
 
 | algorithme | nœuds développés (médiane) | open list max | temps (ms) |
 |---|---:|---:|---:|
-| `bfs` | 90 512 | 23 980 | 9.421 |
-| `astar` | 514 | 302 | 0.059 |
+| `bfs` | 90 512 | 23 980 | 9.018 |
+| `astar` | 514 | 302 | 0.058 |
 
 **A\* développe 176× moins de nœuds que le BFS**, à solution identique — les deux sont optimaux, c'est l'oracle qui le vérifie.
 
@@ -49,10 +49,10 @@ O(n)). `fast` = tas binaire et table de hachage.
 
 | structures | nœuds générés | temps total (s) | débit (nœuds/s) | mémoire pic (Ko) |
 |---|---:|---:|---:|---:|
-| `list` | 879 046 | 6.992 | 125 713 | 1 222 |
-| `fast` | 442 534 | 0.022 | 20 209 800 | 800 |
+| `list` | 879 046 | 7.180 | 122 428 | 1 222 |
+| `fast` | 442 534 | 0.022 | 20 359 496 | 800 |
 
-**161× de débit**, à longueur de solution identique.
+**166× de débit**, à longueur de solution identique.
 
 ## Jeter un doublon sans comparer son `g`
 
@@ -79,12 +79,12 @@ itérations.
 | 40 | `ida` | 10/10 | 31 | 684 o | 0.001 |
 | 60 | `astar` | 10/10 | 38 | 3 072 Ko | 0.006 |
 | 60 | `ida` | 10/10 | 38 | 712 o | 0.002 |
-| 80 | `astar` | 9/10 | 42 | 10 752 Ko | 0.026 |
+| 80 | `astar` | 9/10 | 42 | 10 752 Ko | 0.024 |
 | 80 | `ida` | 10/10 | 43 | 732 o | 0.011 |
-| 100 | `astar` | 9/10 | 44 | 24 960 Ko | 0.078 |
-| 100 | `ida` | 10/10 | 44 | 736 o | 0.056 |
-| 140 | `astar` | 8/10 | 45 | 57 217 Ko | 0.279 |
-| 140 | `ida` | 10/10 | 49 | 756 o | 0.229 |
-| 200 | `astar` | 5/10 | 48 | 122 882 Ko | 0.877 |
-| 200 | `ida` | 10/10 | 52 | 768 o | 1.530 |
+| 100 | `astar` | 9/10 | 44 | 24 960 Ko | 0.073 |
+| 100 | `ida` | 10/10 | 44 | 736 o | 0.055 |
+| 140 | `astar` | 8/10 | 45 | 57 217 Ko | 0.250 |
+| 140 | `ida` | 10/10 | 49 | 756 o | 0.228 |
+| 200 | `astar` | 5/10 | 48 | 122 882 Ko | 0.790 |
+| 200 | `ida` | 10/10 | 52 | 768 o | 1.335 |
 

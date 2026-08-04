@@ -18,9 +18,9 @@ résultat attendu, et l'oracle BFS est ce qui permet de l'affirmer : il explore
 par profondeur croissante, donc sa première solution est optimale par
 construction, sans rien supposer de l'heuristique.
 
-**Les structures de données valent 161× de débit.** Remplacer `popBest` (O(n))
+**Les structures de données valent 166× de débit.** Remplacer `popBest` (O(n))
 par un tas binaire et `onList` (O(n) avec un `memcmp` par nœud) par une table de
-hachage fait passer de 125 713 à 20 209 800 nœuds générés par seconde. Le débit
+hachage fait passer de 122 428 à 20 359 496 nœuds générés par seconde. Le débit
 de la version sur listes n'est d'ailleurs pas une constante : il s'effondre à
 mesure que les listes grandissent. C'est la signature du O(n²).
 

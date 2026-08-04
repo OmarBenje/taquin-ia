@@ -105,8 +105,8 @@ masque) et double dès que la charge dépasse 1,0.
 41 081 états distincts répartis dans 65 536 seaux. La promesse O(1) est comptée,
 pas supposée.
 
-*Effet* : **161× de débit** à longueur de solution identique
-(125 713 → 20 209 800 nœuds/s).
+*Effet* : **166× de débit** à longueur de solution identique
+(122 428 → 20 359 496 nœuds/s).
 
 ---
 

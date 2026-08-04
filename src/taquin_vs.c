@@ -63,13 +63,28 @@ static void print_controls(void)
 /* ------------------------------------------------------------------ */
 /* main                                                                */
 /* ------------------------------------------------------------------ */
-int main(void)
+int main(int argc, char *argv[])
 {
+  /* Graine explicite : sans --seed on tire du temps courant (partie
+     différente à chaque lancement), avec --seed N la partie est rejouable. */
+  unsigned long long seed = (unsigned long long)time(NULL);
+
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "--seed") == 0 && i + 1 < argc)
+      seed = strtoull(argv[++i], NULL, 10);
+    else {
+      printf("Usage : %s [--seed N]\n", argv[0]);
+      return 1;
+    }
+  }
+
   printf("╔══════════════════════════════════╗\n");
   printf("║   TAQUIN  —  Joueur  vs  IA      ║\n");
   printf("╚══════════════════════════════════╝\n\n");
+  printf("Graine de la partie : %llu   (rejouable avec --seed %llu)\n", seed, seed);
 
   /* Générer l'état initial */
+  boardSeed(seed);
   Item *initial = initGame();
 
   /* Sauvegarder le plateau pour lancer A* séparément */

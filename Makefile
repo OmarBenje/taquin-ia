@@ -12,12 +12,12 @@ $(BIN):
 	mkdir -p $(BIN)
 
 # Mode interactif : le joueur affronte A*.
-$(BIN)/taquin_vs: src/taquin_vs.c src/board.c starting-kit/list.c | $(BIN)
+$(BIN)/taquin_vs: src/taquin_vs.c src/board.c src/puzzle.c starting-kit/list.c | $(BIN)
 	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LDLIBS)
 
 # Solveur BFS / A* d'origine, restauré tel quel (commit c34e2a1).
 # Sert de référence historique : c'est le « avant » des phases 1 et 2.
-$(BIN)/taquin_baseline: src/baseline.c src/board.c starting-kit/list.c | $(BIN)
+$(BIN)/taquin_baseline: src/baseline.c src/board.c src/puzzle.c starting-kit/list.c | $(BIN)
 	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LDLIBS)
 
 clean:

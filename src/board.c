@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include <math.h>
 #include "board.h"
 
 /*
@@ -11,7 +10,18 @@
  *                                         4 5 6
  *                                         7 8 _
  * La case vide (blank) est représentée par 0.
+ *
+ * Ce fichier est l'adaptateur Item <-> plateau nu : les règles du jeu vivent
+ * dans puzzle.c, on ne les réimplémente pas ici.
  */
+
+/* Graine explicite : RANDINIT() ne vit plus dans initGame(). */
+static rng_t g_rng = { 0 };
+
+void boardSeed(uint64_t seed)
+{
+  rng_seed(&g_rng, seed);
+}
 
 /* ------------------------------------------------------------------ */
 /* initBoard : copie un tableau de chars dans un nouveau nœud          */
@@ -24,14 +34,7 @@ void initBoard(Item *node, char *board)
   node->board = malloc(MAX_BOARD * sizeof(char));
   assert(node->board);
   memcpy(node->board, board, MAX_BOARD);
-
-  /* retrouver la position de la case vide */
-  for (int i = 0; i < MAX_BOARD; i++) {
-    if (board[i] == 0) {
-      node->blank = (char)i;
-      break;
-    }
-  }
+  node->blank = (char)puzzle_blank((const cell_t *)board);
 }
 
 /* ------------------------------------------------------------------ */
@@ -40,22 +43,7 @@ void initBoard(Item *node, char *board)
 void printBoard(Item *node)
 {
   assert(node);
-  printf("\n");
-  for (int i = 0; i < WH_BOARD; i++) {
-    for (int j = 0; j < WH_BOARD; j++)
-      printf("+---");
-    printf("+\n");
-
-    for (int j = 0; j < WH_BOARD; j++) {
-      int val = (unsigned char)node->board[i * WH_BOARD + j];
-      if (val == 0) printf("|   ");
-      else          printf("| %d ", val);
-    }
-    printf("|\n");
-  }
-  for (int j = 0; j < WH_BOARD; j++)
-    printf("+---");
-  printf("+\n");
+  puzzle_print((const cell_t *)node->board);
 }
 
 /* ------------------------------------------------------------------ */
@@ -64,18 +52,18 @@ void printBoard(Item *node)
 /* ------------------------------------------------------------------ */
 double evaluateBoard(Item *node)
 {
-  int dist = 0;
-  for (int i = 0; i < MAX_BOARD; i++) {
+  int i, dist = 0;
+
+  for (i = 0; i < MAX_BOARD; i++) {
     int val = (unsigned char)node->board[i];
-    if (val == 0) continue;        /* la case vide ne compte pas */
+    int goal_pos, dr, dc;
 
-    int goal_pos = val - 1;        /* position but de la tuile val */
-    int cur_row  = i        / WH_BOARD;
-    int cur_col  = i        % WH_BOARD;
-    int goal_row = goal_pos / WH_BOARD;
-    int goal_col = goal_pos % WH_BOARD;
+    if (val == 0) continue;            /* la case vide ne compte pas */
 
-    dist += abs(cur_row - goal_row) + abs(cur_col - goal_col);
+    goal_pos = val - 1;                /* position but de la tuile val */
+    dr = i / WH_BOARD - goal_pos / WH_BOARD;
+    dc = i % WH_BOARD - goal_pos % WH_BOARD;
+    dist += (dr < 0 ? -dr : dr) + (dc < 0 ? -dc : dc);
   }
   return (double)dist;
 }
@@ -87,26 +75,17 @@ double evaluateBoard(Item *node)
 /* ------------------------------------------------------------------ */
 Item *getChildBoard(Item *node, int move)
 {
-  int blank     = (unsigned char)node->blank;
-  int new_blank = -1;
+  cell_t next[MAX_BOARD];
+  Item  *child;
+  int    new_blank;
 
-  switch (move) {
-    case MOVE_UP:    if (blank >= WH_BOARD)                   new_blank = blank - WH_BOARD; break;
-    case MOVE_DOWN:  if (blank < MAX_BOARD - WH_BOARD)        new_blank = blank + WH_BOARD; break;
-    case MOVE_LEFT:  if (blank % WH_BOARD != 0)               new_blank = blank - 1;        break;
-    case MOVE_RIGHT: if (blank % WH_BOARD != WH_BOARD - 1)    new_blank = blank + 1;        break;
-  }
-
-  if (new_blank == -1)
+  new_blank = puzzle_apply((const cell_t *)node->board,
+                           (unsigned char)node->blank, move, next);
+  if (new_blank < 0)
     return NULL;
 
-  Item *child = nodeAlloc();
-  initBoard(child, node->board);
-
-  /* échange la case vide avec la tuile voisine */
-  child->board[blank]     = child->board[new_blank];
-  child->board[new_blank] = 0;
-  child->blank            = (char)new_blank;
+  child = nodeAlloc();
+  initBoard(child, (char *)next);
 
   child->parent = node;
   child->depth  = node->depth + 1;
@@ -118,44 +97,38 @@ Item *getChildBoard(Item *node, int move)
 }
 
 /* ------------------------------------------------------------------ */
-/* initGame : génère un état initial aléatoire solvable                */
-/* Principe : partir de l'état but et appliquer N mouvements aléatoires*/
+/* itemFromBoard : nœud racine à partir d'un plateau nu                */
 /* ------------------------------------------------------------------ */
-Item *initGame()
+Item *itemFromBoard(const cell_t *board)
 {
-  RANDINIT();
-
-  /* état but */
-  char board[MAX_BOARD];
-  for (int i = 0; i < MAX_BOARD - 1; i++) board[i] = (char)(i + 1);
-  board[MAX_BOARD - 1] = 0;
-  int blank      = MAX_BOARD - 1;
-  int prev_blank = -1;
-
-  /* mélange par 200 mouvements aléatoires (évite les aller-retours) */
-  for (int k = 0; k < 200; k++) {
-    int neighbors[4], n = 0;
-
-    if (blank >= WH_BOARD)                  neighbors[n++] = blank - WH_BOARD;
-    if (blank < MAX_BOARD - WH_BOARD)       neighbors[n++] = blank + WH_BOARD;
-    if (blank % WH_BOARD != 0)              neighbors[n++] = blank - 1;
-    if (blank % WH_BOARD != WH_BOARD - 1)   neighbors[n++] = blank + 1;
-
-    int next;
-    do { next = neighbors[RANDMAX(n)]; } while (next == prev_blank && n > 1);
-
-    board[blank] = board[next];
-    board[next]  = 0;
-    prev_blank   = blank;
-    blank        = next;
-  }
-
   Item *node = nodeAlloc();
-  initBoard(node, board);
-  node->depth = 0;
-  node->g     = 0;
-  node->h     = (float)evaluateBoard(node);
-  node->f     = node->h;
+
+  initBoard(node, (char *)board);
+  node->depth  = 0;
+  node->g      = 0;
+  node->h      = (float)evaluateBoard(node);
+  node->f      = node->h;
+  node->parent = NULL;
 
   return node;
+}
+
+/* ------------------------------------------------------------------ */
+/* initGame : génère un état initial aléatoire solvable                */
+/* Principe : partir de l'état but et appliquer N mouvements aléatoires*/
+/* La graine vient de boardSeed() — plus de RANDINIT() caché ici.      */
+/* ------------------------------------------------------------------ */
+Item *initGameShuffle(int nmoves)
+{
+  cell_t board[MAX_BOARD];
+
+  puzzle_goal(board);
+  puzzle_shuffle(board, nmoves, &g_rng);
+
+  return itemFromBoard(board);
+}
+
+Item *initGame(void)
+{
+  return initGameShuffle(200);
 }

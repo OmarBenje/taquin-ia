@@ -1,0 +1,17 @@
+# Binaires produits par le Makefile
+bin/
+*.o
+*.d
+*.dSYM/
+
+# Supports de cours (non redistribués)
+*.pdf
+
+# macOS
+.DS_Store
+
+# Sorties de banc temporaires
+results/tmp/
+
+# Artefacts de processus, pas de produit
+docs/superpowers/

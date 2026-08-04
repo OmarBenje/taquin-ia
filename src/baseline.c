@@ -122,18 +122,21 @@ void astar(void)
 
 /* ------------------------------------------------------------------ */
 /* main                                                                */
-/* Usage : ./taquin [bfs|astar]   (défaut : astar)                    */
+/* Usage : ./taquin_baseline [bfs|astar] [--seed N]   (défaut : astar) */
 /* ------------------------------------------------------------------ */
 int main(int argc, char *argv[])
 {
-  int use_astar = 1; /* A* par défaut */
+  int use_astar = 1;                 /* A* par défaut */
+  unsigned long long seed = 42;      /* graine explicite (RANDINIT() sorti d'initGame) */
 
-  if (argc >= 2)
+  for (int i = 1; i < argc; i++)
   {
-    if (strcmp(argv[1], "bfs") == 0)
+    if (strcmp(argv[i], "bfs") == 0)
       use_astar = 0;
-    if (strcmp(argv[1], "astar") == 0)
+    else if (strcmp(argv[i], "astar") == 0)
       use_astar = 1;
+    else if (strcmp(argv[i], "--seed") == 0 && i + 1 < argc)
+      seed = strtoull(argv[++i], NULL, 10);
   }
 
   initList(&openList);
@@ -141,7 +144,9 @@ int main(int argc, char *argv[])
 
   printf("=== Taquin %dx%d ===\n", WH_BOARD, WH_BOARD);
   printf("Algorithme : %s\n", use_astar ? "A* (Manhattan)" : "BFS");
+  printf("Graine     : %llu\n", seed);
 
+  boardSeed(seed);
   Item *initial = initGame();
   printf("\nEtat initial (h=%.0f) :", initial->h);
   printBoard(initial);

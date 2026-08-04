@@ -24,7 +24,7 @@ Le Taquin est un puzzle classique composé d'une grille **3×3** contenant 8 tui
 
 ## Mode Joueur vs IA
 
-Lance `./taquin_vs` pour affronter l'IA. Le programme :
+Lance `./bin/taquin_vs` pour affronter l'IA. Le programme :
 
 1. Génère un puzzle aléatoire solvable
 2. Calcule en silence la solution optimale avec A*
@@ -66,14 +66,24 @@ Cette heuristique est **admissible** (ne surestime jamais le coût réel), ce qu
 ## Structure du projet
 
 ```
-starting-kit/
-├── item.h        # Structure de nœud (tuiles, coûts f/g/h, pointeurs parent/prev/next)
-├── list.h        # Interface de la liste doublement chaînée
-├── list.c        # Implémentation : addFirst, addLast, popFirst, popLast, popBest...
-├── board.h       # Constantes du jeu et prototypes
-├── board.c       # Logique du Taquin : initGame, printBoard, evaluateBoard, getChildBoard
-├── taquin_vs.c   # Mode interactif Joueur vs IA
-└── Makefile
+starting-kit/      # squelette fourni par l'école, inchangé
+├── item.h         # Structure de nœud (tuiles, coûts f/g/h, pointeurs parent/prev/next)
+├── list.h         # Interface de la liste doublement chaînée
+└── list.c         # Implémentation : addFirst, addLast, popFirst, popLast, popBest...
+src/
+├── puzzle.[ch]    # Règles du jeu sur un plateau nu
+├── heuristic.[ch] # zero, misplaced, manhattan, manhattan + conflit linéaire
+├── node.h node.c  # Nœud de recherche et allocateur par blocs
+├── pqueue.[ch]    # Tas binaire (remplace popBest, O(log n) au lieu de O(n))
+├── hashset.[ch]   # Table de hachage (remplace onList, O(1) au lieu de O(n))
+├── search.[ch]    # BFS et A*, sur les listes du squelette ou sur les structures rapides
+├── stats.[ch]     # Compteurs : nœuds générés, développés, mémoire pic, temps
+├── board.[ch]     # Adaptateur vers la structure Item du squelette
+├── taquin.c       # Banc de mesure  →  bin/taquin
+├── taquin_vs.c    # Mode interactif Joueur vs IA  →  bin/taquin_vs
+└── baseline.c     # Solveur d'origine restauré  →  bin/taquin_baseline
+tests/             # make test
+Makefile
 ```
 
 ---
@@ -88,13 +98,19 @@ starting-kit/
 ### Compilation
 
 ```bash
-make
+make          # ~1 s
+make test     # la suite de tests, ~3 s
 ```
 
 ### Exécution
 
 ```bash
-./taquin_vs
+./bin/taquin_vs                 # jouer contre l'IA
+./bin/taquin_vs --seed 42       # rejouer exactement la même partie
+
+./bin/taquin --runs 20 --verify # le banc de mesure : 20 instances, vérifiées
+                                # contre l'oracle BFS
+./bin/taquin --help             # toutes les options
 ```
 
 ---

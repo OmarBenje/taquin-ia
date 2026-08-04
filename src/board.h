@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "list.h"
 #include "puzzle.h"
+#include "heuristic.h"
 
 /*
  * Adaptateur entre la logique nue du taquin (puzzle.h) et la structure Item
@@ -24,6 +25,11 @@
  * (`--seed N`).  Sans appel, la graine vaut 0.
  */
 void   boardSeed(uint64_t seed);
+
+/* Heuristique employée par evaluateBoard(). Manhattan par défaut, comme dans
+ * le code d'origine ; le banc la change pour comparer les heuristiques sans
+ * dupliquer le solveur. */
+void   boardHeuristic(heuristic_id id);
 
 Item  *initGame(void);                   /* mélange par défaut : 200 coups */
 Item  *initGameShuffle(int nmoves);

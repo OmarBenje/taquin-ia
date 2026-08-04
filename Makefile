@@ -9,11 +9,18 @@ CORE     = src/puzzle.c src/heuristic.c
 # Adaptateur vers la structure Item du squelette fourni.
 KIT      = src/board.c starting-kit/list.c
 
+# Solveur instrumenté.
+SEARCH   = src/search.c src/stats.c
+
 TESTS    = $(BIN)/test_puzzle $(BIN)/test_heuristic
 
 .PHONY: all test clean
 
-all: $(BIN)/taquin_vs $(BIN)/taquin_baseline
+all: $(BIN)/taquin $(BIN)/taquin_vs $(BIN)/taquin_baseline
+
+# Banc de mesure : c'est lui qui produit les CSV du README.
+$(BIN)/taquin: src/taquin.c $(SEARCH) $(KIT) $(CORE) | $(BIN)
+	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $^ $(LDLIBS)
 
 $(BIN):
 	@mkdir -p $(BIN)

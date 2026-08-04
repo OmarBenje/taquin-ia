@@ -18,9 +18,17 @@
 /* Graine explicite : RANDINIT() ne vit plus dans initGame(). */
 static rng_t g_rng = { 0 };
 
+/* Heuristique employée par evaluateBoard() ; Manhattan comme à l'origine. */
+static heuristic_id g_heuristic = H_MANHATTAN;
+
 void boardSeed(uint64_t seed)
 {
   rng_seed(&g_rng, seed);
+}
+
+void boardHeuristic(heuristic_id id)
+{
+  g_heuristic = id;
 }
 
 /* ------------------------------------------------------------------ */
@@ -52,20 +60,7 @@ void printBoard(Item *node)
 /* ------------------------------------------------------------------ */
 double evaluateBoard(Item *node)
 {
-  int i, dist = 0;
-
-  for (i = 0; i < MAX_BOARD; i++) {
-    int val = (unsigned char)node->board[i];
-    int goal_pos, dr, dc;
-
-    if (val == 0) continue;            /* la case vide ne compte pas */
-
-    goal_pos = val - 1;                /* position but de la tuile val */
-    dr = i / WH_BOARD - goal_pos / WH_BOARD;
-    dc = i % WH_BOARD - goal_pos % WH_BOARD;
-    dist += (dr < 0 ? -dr : dr) + (dc < 0 ? -dc : dc);
-  }
-  return (double)dist;
+  return (double)heuristic_eval(g_heuristic, (const cell_t *)node->board);
 }
 
 /* ------------------------------------------------------------------ */

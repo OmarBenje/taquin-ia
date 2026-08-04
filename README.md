@@ -11,11 +11,13 @@ make && make demo
 ```
 
 ```
-taquin 3x3 | algo=astar impl=fast heuristique=manhattan dup=gcompare
-run 0    seed=42  ok  len=24  generes=1993  developpes=741  memoire=  95.4 Ko  0.111 ms
+taquin 3x3 | algo=astar impl=fast heuristique=manhattan dup=gcompare melange=200 graines=42..61
+run 0    seed=42     ok      len=24  generes=4723   developpes=1766  open_max=966   memoire= 360.0 Ko   0.729 ms
+run 1    seed=43     ok      len=22  generes=1257   developpes=467   open_max=286   memoire= 360.0 Ko   0.057 ms
+run 2    seed=44     ok      len=28  generes=13770  developpes=5162  open_max=2636  memoire= 416.0 Ko   0.869 ms
 ...
 --- resume sur 20 instance(s) ---
-  longueur moyenne    : 22.65 coups
+  longueur moyenne    : 21.70 coups
   ecarts a l'oracle   : 0  (toutes les solutions sont optimales)
 ```
 
